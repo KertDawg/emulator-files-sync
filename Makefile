@@ -11,15 +11,17 @@ ifeq ($(OS),Windows_NT)
 	EXE_SUFFIX := .exe
 	DATA_SEP := ;
 	PYTHON ?= python
+	ICON_FILE := images\EFS.ico
 else
 	VENV_PY := $(VENV_DIR)/bin/python
 	VENV_PIP := $(VENV_DIR)/bin/pip
 	PYINSTALLER := $(VENV_DIR)/bin/pyinstaller
 	EXE_SUFFIX :=
 	DATA_SEP := :
+	ICON_FILE := images/EFS.ico
 endif
 
-PYINSTALLER_DATA_ARGS := --add-data "mappings$(DATA_SEP)mappings"
+PYINSTALLER_DATA_ARGS := --add-data "mappings$(DATA_SEP)mappings" --add-data "images$(DATA_SEP)images"
 
 .PHONY: configure venv install run build clean
 
@@ -39,7 +41,7 @@ run: install
 	$(VENV_PY) $(SRC_FILE)
 
 build: install
-	$(PYINSTALLER) --noconfirm --onefile --name "$(APP_NAME)" $(PYINSTALLER_DATA_ARGS) $(SRC_FILE)
+	$(PYINSTALLER) --noconfirm --onefile --name "$(APP_NAME)" --icon "$(ICON_FILE)" --hidden-import PIL._tkinter_finder $(PYINSTALLER_DATA_ARGS) $(SRC_FILE)
 	@echo "Build complete: $(DIST_DIR)/$(APP_NAME)$(EXE_SUFFIX)"
 
 clean:

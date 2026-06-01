@@ -10,6 +10,7 @@ from pathlib import Path
 from tkinter import filedialog
 from typing import Dict, List
 
+from PIL import Image
 import customtkinter as ctk
 
 
@@ -18,7 +19,10 @@ ctk.set_default_color_theme("blue")
 
 APP_TITLE = "Emulator Files Sync"
 MAPPINGS_DIR = Path(__file__).resolve().parent / "mappings"
+IMAGES_DIR = Path(__file__).resolve().parent / "images"
 DEFAULT_SYSTEM_OPTION = "Select a System"
+PANE_WIDTH = 340
+INITIAL_WINDOW_HEIGHT = 760
 
 
 @dataclass
@@ -32,8 +36,10 @@ class App(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_TITLE)
-        self.geometry("1180x760")
-        self.minsize(960, 620)
+        self.geometry(f"1180x{INITIAL_WINDOW_HEIGHT}")
+        self._min_window_width = 0
+        self._min_window_height = 0
+        self._enforcing_min_size = False
 
         self.profile_files = self._discover_profile_files()
         self.src_map: Dict[str, str] = {}
@@ -49,6 +55,8 @@ class App(ctk.CTk):
         self.dest_root_var = ctk.StringVar(value="")
 
         self._build_layout()
+        self._apply_minimum_window_size()
+        self.bind("<Configure>", self._enforce_minimum_window_size)
         self._bind_events()
         self._set_status(
             "Select the source and destination systems and the folders for each. Press Sync to start.",
@@ -82,10 +90,11 @@ class App(ctk.CTk):
 
         self.main_frame = ctk.CTkFrame(self, corner_radius=8)
         self.main_frame.grid(row=2, column=0, sticky="nsew", padx=16, pady=(0, 16))
-        self.main_frame.grid_columnconfigure(1, weight=1)
+        self.main_frame.grid_columnconfigure(0, weight=1, minsize=PANE_WIDTH, uniform="panes")
+        self.main_frame.grid_columnconfigure(1, weight=1, minsize=PANE_WIDTH, uniform="panes")
         self.main_frame.grid_rowconfigure(0, weight=1)
 
-        self.left_panel = ctk.CTkFrame(self.main_frame, width=320, corner_radius=8)
+        self.left_panel = ctk.CTkFrame(self.main_frame, width=PANE_WIDTH, corner_radius=8)
         self.left_panel.grid(row=0, column=0, sticky="nsw", padx=(0, 10), pady=10)
         self.left_panel.grid_propagate(False)
         self.left_panel.grid_columnconfigure(0, weight=1)
@@ -159,9 +168,16 @@ class App(ctk.CTk):
         self.progress_text.grid(row=left_row, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 2))
         left_row += 1
         self.current_system_label = ctk.CTkLabel(self.left_panel, text="Current system: None")
-        self.current_system_label.grid(row=left_row, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 12))
+        self.current_system_label.grid(row=left_row, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 8))
+        left_row += 1
 
-        self.right_panel = ctk.CTkFrame(self.main_frame, corner_radius=8)
+        logo_pil = Image.open(IMAGES_DIR / "EFS.jpg")
+        logo_ctk = ctk.CTkImage(light_image=logo_pil, dark_image=logo_pil, size=(220, 220))
+        ctk.CTkLabel(self.left_panel, image=logo_ctk, text="").grid(
+            row=left_row, column=0, columnspan=2, pady=(0, 12)
+        )
+
+        self.right_panel = ctk.CTkFrame(self.main_frame, width=PANE_WIDTH, corner_radius=8)
         self.right_panel.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=10)
         self.right_panel.grid_columnconfigure(0, weight=1)
         self.right_panel.grid_rowconfigure(2, weight=1)
@@ -194,6 +210,30 @@ class App(ctk.CTk):
         self.table_frame.grid_columnconfigure(0, weight=0, minsize=110)
         self.table_frame.grid_columnconfigure(1, weight=1)
         self.table_frame.grid_columnconfigure(2, weight=1)
+
+    def _apply_minimum_window_size(self) -> None:
+        self.update_idletasks()
+        baseline_width = (PANE_WIDTH * 2) + 52
+        self._min_window_width = max(self.winfo_reqwidth(), baseline_width)
+        self._min_window_height = max(self.winfo_reqheight(), self.winfo_height(), INITIAL_WINDOW_HEIGHT)
+        self.wm_minsize(self._min_window_width, self._min_window_height)
+
+    def _enforce_minimum_window_size(self, event: object) -> None:
+        if self._enforcing_min_size:
+            return
+
+        width = self.winfo_width()
+        height = self.winfo_height()
+        target_width = max(width, self._min_window_width)
+        target_height = max(height, self._min_window_height)
+        if target_width == width and target_height == height:
+            return
+
+        self._enforcing_min_size = True
+        try:
+            self.geometry(f"{target_width}x{target_height}")
+        finally:
+            self._enforcing_min_size = False
 
     def _bind_events(self) -> None:
         self.source_profile_var.trace_add("write", lambda *_: self._on_profile_change())
