@@ -18,6 +18,7 @@ ctk.set_default_color_theme("blue")
 
 APP_TITLE = "Emulator Files Sync"
 MAPPINGS_DIR = Path(__file__).resolve().parent / "mappings"
+DEFAULT_SYSTEM_OPTION = "Select a System"
 
 
 @dataclass
@@ -87,18 +88,19 @@ class App(ctk.CTk):
         self.left_panel = ctk.CTkFrame(self.main_frame, width=320, corner_radius=8)
         self.left_panel.grid(row=0, column=0, sticky="nsw", padx=(0, 10), pady=10)
         self.left_panel.grid_propagate(False)
-        self.left_panel.grid_columnconfigure(1, weight=1)
+        self.left_panel.grid_columnconfigure(0, weight=1)
+        self.left_panel.grid_columnconfigure(1, weight=0)
 
         left_row = 0
         ctk.CTkLabel(self.left_panel, text="Source System", anchor="w").grid(
             row=left_row, column=0, columnspan=2, sticky="ew", padx=12, pady=(12, 4)
         )
         left_row += 1
-        profiles = list(self.profile_files.keys())
+        profiles = self._profile_menu_values()
         self.source_profile_menu = ctk.CTkOptionMenu(
             self.left_panel,
             variable=self.source_profile_var,
-            values=profiles if profiles else ["No mappings found"],
+            values=profiles,
         )
         self.source_profile_menu.grid(
             row=left_row, column=0, columnspan=2, sticky="ew", padx=12, pady=(0, 10)
@@ -112,7 +114,7 @@ class App(ctk.CTk):
         self.dest_profile_menu = ctk.CTkOptionMenu(
             self.left_panel,
             variable=self.dest_profile_var,
-            values=profiles if profiles else ["No mappings found"],
+            values=profiles,
         )
         self.dest_profile_menu.grid(
             row=left_row, column=0, columnspan=2, sticky="ew", padx=12, pady=(0, 10)
@@ -127,8 +129,8 @@ class App(ctk.CTk):
             self.left_panel, textvariable=self.source_root_var, placeholder_text="Select source folder"
         )
         self.source_entry.grid(row=left_row, column=0, sticky="ew", padx=(12, 6), pady=(0, 10))
-        ctk.CTkButton(self.left_panel, text="Browse", width=90, command=self._choose_source_folder).grid(
-            row=left_row, column=1, sticky="ew", padx=(0, 12), pady=(0, 10)
+        ctk.CTkButton(self.left_panel, text="...", width=42, command=self._choose_source_folder).grid(
+            row=left_row, column=1, sticky="e", padx=(0, 12), pady=(0, 10)
         )
         left_row += 1
 
@@ -140,8 +142,8 @@ class App(ctk.CTk):
             self.left_panel, textvariable=self.dest_root_var, placeholder_text="Select destination folder"
         )
         self.dest_entry.grid(row=left_row, column=0, sticky="ew", padx=(12, 6), pady=(0, 10))
-        ctk.CTkButton(self.left_panel, text="Browse", width=90, command=self._choose_dest_folder).grid(
-            row=left_row, column=1, sticky="ew", padx=(0, 12), pady=(0, 10)
+        ctk.CTkButton(self.left_panel, text="...", width=42, command=self._choose_dest_folder).grid(
+            row=left_row, column=1, sticky="e", padx=(0, 12), pady=(0, 10)
         )
         left_row += 1
 
@@ -196,10 +198,18 @@ class App(ctk.CTk):
     def _bind_events(self) -> None:
         self.source_profile_var.trace_add("write", lambda *_: self._on_profile_change())
         self.dest_profile_var.trace_add("write", lambda *_: self._on_profile_change())
+        if self.profile_files:
+            self.source_profile_var.set(DEFAULT_SYSTEM_OPTION)
+            self.dest_profile_var.set(DEFAULT_SYSTEM_OPTION)
+        else:
+            self.source_profile_var.set("No mappings found")
+            self.dest_profile_var.set("No mappings found")
+
+    def _profile_menu_values(self) -> List[str]:
         profiles = list(self.profile_files.keys())
-        if profiles:
-            self.source_profile_var.set(profiles[0])
-            self.dest_profile_var.set(profiles[0])
+        if not profiles:
+            return ["No mappings found"]
+        return [DEFAULT_SYSTEM_OPTION, *profiles]
 
     def _set_status(self, message: str, level: str) -> None:
         palette = {
@@ -312,9 +322,17 @@ class App(ctk.CTk):
     def _validate_sync_inputs(self) -> str | None:
         source_profile = self.source_profile_var.get().strip()
         dest_profile = self.dest_profile_var.get().strip()
-        if not source_profile or source_profile not in self.profile_files:
+        if (
+            not source_profile
+            or source_profile == DEFAULT_SYSTEM_OPTION
+            or source_profile not in self.profile_files
+        ):
             return "Please select a source system."
-        if not dest_profile or dest_profile not in self.profile_files:
+        if (
+            not dest_profile
+            or dest_profile == DEFAULT_SYSTEM_OPTION
+            or dest_profile not in self.profile_files
+        ):
             return "Please select a destination system."
         if not self.source_root_var.get().strip():
             return "Please select a source folder."
