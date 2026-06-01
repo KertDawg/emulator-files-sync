@@ -34,7 +34,7 @@ venv:
 	$(PYTHON) -m venv $(VENV_DIR)
 
 install: configure venv
-	$(PYTHON) -m pip install --upgrade pip
+	$(VENV_PY) -m pip install --upgrade pip
 	$(VENV_PIP) install --upgrade pip
 	$(VENV_PIP) install -r requirements.txt
 
