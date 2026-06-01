@@ -307,9 +307,11 @@ class App(ctk.CTk):
         return selected
 
     def _validate_sync_inputs(self) -> str | None:
-        if not self.source_profile_var.get().strip() or self.source_profile_var.get() not in self.profile_files:
+        source_profile = self.source_profile_var.get().strip()
+        dest_profile = self.dest_profile_var.get().strip()
+        if not source_profile or source_profile not in self.profile_files:
             return "Please select a source system."
-        if not self.dest_profile_var.get().strip() or self.dest_profile_var.get() not in self.profile_files:
+        if not dest_profile or dest_profile not in self.profile_files:
             return "Please select a destination system."
         if not self.source_root_var.get().strip():
             return "Please select a source folder."
