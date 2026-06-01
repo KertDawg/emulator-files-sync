@@ -344,40 +344,41 @@ class App(ctk.CTk):
 
     def _sync_worker(self, source_root: Path, dest_root: Path, selected_rows: List[SystemRow]) -> None:
         try:
-            total_files = 0
+            copy_plan: List[tuple[str, Path, Path]] = []
+            valid_systems: set[str] = set()
             for row in selected_rows:
-                src_dir = source_root / row.src_dir
-                for _, _, filenames in os.walk(src_dir):
-                    total_files += len(filenames)
-
-            copied = 0
-            systems_copied = 0
-            for row in selected_rows:
-                self.ui_queue.put(("current", row.system))
                 src_dir = source_root / row.src_dir
                 dst_dir = dest_root / row.dst_dir
-
                 if not src_dir.exists():
                     self.ui_queue.put(("warn", f"Skipped {row.system}: source path does not exist ({src_dir})."))
                     continue
 
-                dst_dir.mkdir(parents=True, exist_ok=True)
+                valid_systems.add(row.system)
                 for root, _, filenames in os.walk(src_dir):
                     root_path = Path(root)
                     rel = root_path.relative_to(src_dir)
                     target_root = dst_dir / rel
-                    target_root.mkdir(parents=True, exist_ok=True)
                     for file_name in filenames:
-                        src_file = root_path / file_name
-                        dst_file = target_root / file_name
-                        shutil.copy2(src_file, dst_file)
-                        copied += 1
-                        percent = (copied / total_files) if total_files else 1.0
-                        self.ui_queue.put(("progress", percent, copied, total_files))
+                        copy_plan.append((row.system, root_path / file_name, target_root / file_name))
 
-                systems_copied += 1
+            total_files = len(copy_plan)
+            if total_files == 0:
+                self.ui_queue.put(("done", len(valid_systems), 0))
+                return
 
-            self.ui_queue.put(("done", systems_copied, copied))
+            copied = 0
+            active_system = ""
+            for system_name, src_file, dst_file in copy_plan:
+                if system_name != active_system:
+                    active_system = system_name
+                    self.ui_queue.put(("current", system_name))
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, dst_file)
+                copied += 1
+                percent = copied / total_files
+                self.ui_queue.put(("progress", percent, copied, total_files))
+
+            self.ui_queue.put(("done", len(valid_systems), copied))
         except Exception as exc:
             self.ui_queue.put(("error", str(exc)))
 
