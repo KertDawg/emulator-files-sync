@@ -1,6 +1,6 @@
 PYTHON ?= python3
 VENV_DIR ?= .venv
-APP_NAME ?= emulator-files-sync
+APP_NAME ?= Emulator Files Sync
 SRC_FILE ?= app.py
 DIST_DIR ?= dist
 
@@ -17,6 +17,8 @@ else
 endif
 
 .PHONY: configure venv install run build clean
+
+all: build
 
 configure:
 	$(PYTHON) scripts/configure.py
