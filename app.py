@@ -230,7 +230,10 @@ class App(ctk.CTk):
         with mapping_path.open(newline="", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             if "System" not in (reader.fieldnames or []) or "Directory" not in (reader.fieldnames or []):
-                raise ValueError(f"{mapping_path.name} must include System and Directory columns.")
+                raise ValueError(
+                    f"{mapping_path.name} must include System and Directory columns. "
+                    f"Found: {reader.fieldnames}"
+                )
             for row in reader:
                 system = (row.get("System") or "").strip()
                 directory = (row.get("Directory") or "").strip()
@@ -348,11 +351,12 @@ class App(ctk.CTk):
         try:
             copy_plan: List[tuple[str, Path, Path]] = []
             valid_systems: set[str] = set()
+            skipped_systems: List[str] = []
             for row in selected_rows:
                 src_dir = source_root / row.src_dir
                 dst_dir = dest_root / row.dst_dir
                 if not src_dir.exists():
-                    self.ui_queue.put(("warn", f"Skipped {row.system}: source path does not exist ({src_dir})."))
+                    skipped_systems.append(f"{row.system} ({src_dir})")
                     continue
 
                 valid_systems.add(row.system)
@@ -365,7 +369,7 @@ class App(ctk.CTk):
 
             total_files = len(copy_plan)
             if total_files == 0:
-                self.ui_queue.put(("done", len(valid_systems), 0))
+                self.ui_queue.put(("done", len(valid_systems), 0, skipped_systems))
                 return
 
             copied = 0
@@ -380,7 +384,7 @@ class App(ctk.CTk):
                 percent = copied / total_files
                 self.ui_queue.put(("progress", percent, copied, total_files))
 
-            self.ui_queue.put(("done", len(valid_systems), copied))
+            self.ui_queue.put(("done", len(valid_systems), copied, skipped_systems))
         except Exception as exc:
             self.ui_queue.put(("error", str(exc)))
 
@@ -395,18 +399,19 @@ class App(ctk.CTk):
                     percent, copied, total = payload[1], payload[2], payload[3]
                     self.progress_bar.set(percent)
                     self.progress_text.configure(text=f"Progress: {percent * 100:.1f}% ({copied}/{total})")
-                elif event == "warn":
-                    self._set_status(payload[1], "error")
                 elif event == "error":
                     self._set_status(f"Sync failed: {payload[1]}", "error")
                     self.current_system_label.configure(text="Current system: None")
                     self.sync_button.configure(state="normal")
                 elif event == "done":
-                    systems, files = payload[1], payload[2]
+                    systems, files, skipped_systems = payload[1], payload[2], payload[3]
                     self.progress_bar.set(1)
                     self.progress_text.configure(text="Progress: 100%")
                     self.current_system_label.configure(text="Current system: Complete")
-                    self._set_status(f"Sync complete. Copied {systems} systems and {files} total files.", "success")
+                    status = f"Sync complete. Copied {systems} systems and {files} total files."
+                    if skipped_systems:
+                        status += " Skipped: " + "; ".join(skipped_systems)
+                    self._set_status(status, "success")
                     self.sync_button.configure(state="normal")
         except queue.Empty:
             pass
