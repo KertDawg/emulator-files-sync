@@ -5,11 +5,12 @@ SRC_FILE ?= app.py
 DIST_DIR ?= dist
 
 ifeq ($(OS),Windows_NT)
-	VENV_PY := $(VENV_DIR)/Scripts/python.exe
-	VENV_PIP := $(VENV_DIR)/Scripts/pip.exe
-	PYINSTALLER := $(VENV_DIR)/Scripts/pyinstaller.exe
+	VENV_PY := $(VENV_DIR)\Scripts\python.exe
+	VENV_PIP := $(VENV_DIR)\Scripts\pip.exe
+	PYINSTALLER := $(VENV_DIR)\Scripts\pyinstaller.exe
 	EXE_SUFFIX := .exe
 	DATA_SEP := ;
+	PYTHON ?= python
 else
 	VENV_PY := $(VENV_DIR)/bin/python
 	VENV_PIP := $(VENV_DIR)/bin/pip
@@ -42,4 +43,12 @@ build: install
 	@echo "Build complete: $(DIST_DIR)/$(APP_NAME)$(EXE_SUFFIX)"
 
 clean:
+ifeq ($(OS),Windows_NT)
+	-rmdir /s /q build 2>nul
+	-rmdir /s /q $(DIST_DIR) 2>nul
+	-rmdir /s /q __pycache__ 2>nul
+	-del /f /q *.spec 2>nul
+	-rmdir /s /q $(VENV_DIR) 2>nul
+else
 	rm -rf build $(DIST_DIR) __pycache__ *.spec $(VENV_DIR)
+endif
