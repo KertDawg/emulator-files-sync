@@ -16,7 +16,7 @@ A Python desktop app that syncs ROM files between emulator directory layouts usi
 
 ## Mapping files
 
-Profile CSV files are loaded from `/tmp/workspace/KertDawg/emulator-files-sync/mappings` and must include:
+Profile CSV files are loaded from the `mappings/` directory in the project root and must include:
 
 ```csv
 System,Directory
@@ -27,14 +27,14 @@ The app intersects `System` names from source and destination profiles and build
 ## Run locally
 
 ```bash
-cd /tmp/workspace/KertDawg/emulator-files-sync
+cd emulator-files-sync
 make run
 ```
 
 ## Build single-file executable
 
 ```bash
-cd /tmp/workspace/KertDawg/emulator-files-sync
+cd emulator-files-sync
 make build
 ```
 
